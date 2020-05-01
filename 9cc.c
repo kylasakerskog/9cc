@@ -29,14 +29,22 @@ struct Token {
   char *str; // トークン文字列;  
 };
 
+// 入力プログラム
+char *user_input;
+
 // 現在着目しているトークン
 Token *token;
 
 // エラーを報告するための関数
 // printfと同じ引数を取る
-void error(char *fmt, ...){
+void error_at(char *loc, char *fmt, ...){
   va_list ap; // 可変個の実引数を扱うための情報を保持
   va_start(ap, fmt); // 可変長引数の取得開始, fmt: 最初の仮引数の名前
+
+  int pos = loc - user_input; // エラーが入力の何バイト目で起きたか
+  fprintf(stderr, "%s\n", user_input);
+  fprintf(stderr, "%*s", pos, ""); // pos個の空白を出力
+  fprintf(stderr, "^ ");
   vfprintf(stderr, fmt, ap); // apのデータをfmtに従ってstderrに出力 
   fprintf(stderr, "\n");
   exit(1);
@@ -59,7 +67,7 @@ bool consume(char op){
  */
 void expect(char op){
   if (token->kind != TK_RESERVED || token->str[0] != op)
-    error("'%c' ではありません", op);
+    error_at(token->str, "'%c' ではありません", op);
   token = token->next;
 }
 
@@ -69,7 +77,7 @@ void expect(char op){
 */
 int expect_number(){
   if (token->kind != TK_NUM)
-    error("数ではありません");
+    error_at(token->str, "数ではありません");
   int val = token->val;
   token = token->next;
   return val;
@@ -115,7 +123,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    error("トークナイズ出来ません");
+    error_at(token->str, "トークナイズ出来ません");
   }
 
   new_token(TK_EOF, cur, p);
