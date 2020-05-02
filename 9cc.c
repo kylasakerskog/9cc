@@ -19,9 +19,7 @@ typedef enum {
 } TokenKind;
 
 // struct TokenをTokenという型で定義
-typedef struct Token Token; 
-
-// トークン型
+typedef struct Token Token;
 struct Token {
   TokenKind kind; // トークンの型
   Token *next; //次の入力トークン
@@ -36,6 +34,15 @@ char *user_input;
 Token *token;
 
 // エラーを報告するための関数
+void error(char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
+  exit(1);
+}
+
+// エラー箇所を報告するための関数
 // printfと同じ引数を取る
 void error_at(char *loc, char *fmt, ...){
   va_list ap; // 可変個の実引数を扱うための情報を保持
@@ -98,7 +105,8 @@ Token *new_token(TokenKind kind, Token *cur, char *str){
 }
 
 // 入力文字列pをトークナイズし，それを返す
-Token *tokenize(char *p) {
+Token *tokenize() {
+  char *p = user_input;
   Token head;
   head.next = NULL;
   Token *cur = &head;
@@ -110,7 +118,8 @@ Token *tokenize(char *p) {
         continue;
     }
 
-    if (*p == '+' || *p == '-'){
+    // 文字列"+-*/()"から*pに一致する文字を探索
+    if (strchr("+-*/()", *p)){
       cur = new_token(TK_RESERVED, cur, p++);
       continue;
     }
@@ -130,42 +139,135 @@ Token *tokenize(char *p) {
   return head.next;
 }
 
-int main(int argc, char **argv) {
-  if (argc != 2){
-    fprintf(stderr, "引数の個数が正しくありません\n");
-    return 1;
+// 抽象構文木のノードの種類
+typedef enum {
+              ND_ADD, // +
+              ND_SUB, // -
+              ND_MUL, // *
+              ND_DIV, // /
+              ND_NUM, // 整数
+} NodeKind;
+
+// struct NodeをNodeという型で定義
+typedef struct Node Node;
+struct Node {
+  NodeKind kind; // ノードの型
+  Node *lhs; // 左辺
+  Node *rhs; // 右辺
+  int val; // kindがND_NUMの場合のみ使う
+};
+
+// 新しいノードの作成(符号，カッコ)
+Node *new_node(NodeKind kind){
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = kind;
+  return node;
+}
+
+Node *new_binary(NodeKind kind, Node *lhs, Node *rhs){
+  Node *node = new_node(kind);
+  node->lhs = lhs;
+  node->rhs = rhs;
+  return node;
+}
+// 新しいノードの作成(数)
+Node *new_num(int val){
+  Node *node = new_node(ND_NUM);
+  node->val = val;
+  return node;
+}
+
+Node *expr();
+Node *mul();
+Node *primary();
+
+// expr = mul ("+" mul | "-" mul)*
+Node *expr(){
+  Node *node = mul();
+  for (;;){
+    if (consume('+'))
+      node = new_binary(ND_ADD, node, mul());
+    else if (consume('-'))
+      node = new_binary(ND_SUB, node, mul());
+    else
+      return node;
   }
-  
-  token = tokenize(argv[1]);
-  
-  // intel記法の選択
-  printf(".intel_syntax noprefix \n");
-  
-  // プログラム全体から見える関数の指定
-  printf(".global main\n");
-  
-  printf("main:\n");
-  
-  /*
-    式の最初は数でなくてはいけないので，それをチェックして
-    最初のmov命令を出力
-  */
-  printf("  mov rax, %d\n", expect_number());
-  
-  /*
-    `+ <数>`，あるいは`- <数>`というトークンの並びを
-    消費しつつアセンブリを出力
-  */
-  while (!at_eof()){
-    if (consume('+')) {
-      printf("  add rax, %d\n", expect_number());
-      continue;
-    }
-    
-    expect('-');
-    printf("  sub rax, %d\n", expect_number());
+}
+
+// mul = primary ("*" primary | "/" primary)*
+Node *mul(){
+  Node *node = primary();
+  for (;;){
+    if (consume('*'))
+      node = new_binary(ND_MUL, node, primary());
+    else if (consume('/'))
+      node = new_binary(ND_DIV, node, primary());
+    else
+      return node;   
+  }
+}
+
+// primary = "(" expr ")" | num
+Node *primary(){
+  // 次のトークンが"("なら"(" expr ")"のはず
+  if (consume('(')){
+    Node *node = expr();
+    expect(')');
+    return node;
   }
 
+  // それ以外ならnum
+  return new_num(expect_number());
+}
+
+void gen(Node *node){
+  if (node->kind == ND_NUM){
+    printf("  push %d\n", node->val);
+    return;
+  }
+
+  gen(node->lhs);
+  gen(node->rhs);
+
+  printf("  pop rdi\n");
+  printf("  pop rax\n");
+
+  switch (node->kind){
+  case ND_ADD:
+    printf("  add rax, rdi\n");
+    break;
+  case ND_SUB:
+    printf("  sub rax, rdi\n");
+    break;
+  case ND_MUL:
+    printf("  imul rax, rdi\n");
+    break;
+  case ND_DIV:
+    printf("  cqo\n"); // RAXの64bitを128bitに伸ばし，RDXとRAXにセット
+    printf("  idiv rdi\n"); // 引数のレジスタの64bitで割る
+    break;
+  }
+  printf("  push rax\n");
+}
+
+int main(int argc, char **argv) {
+  if (argc != 2)
+    error("%s: 引数の個数が正しくありません", argv[0]);
+
+  user_input = argv[1];
+  token = tokenize();
+  Node *node = expr();
+
+  // 最初の3行
+  printf(".intel_syntax noprefix \n"); // intel記法の選択
+  printf(".global main\n"); // プログラム全体から見える関数の指定
+  printf("main:\n");
+
+  // 走査
+  gen(node);
+
+  // スタックポインタに結果があるのでpopする
+  printf("  pop rax\n");
   printf("  ret\n");
   return 0;
 }
