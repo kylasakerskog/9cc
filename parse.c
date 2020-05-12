@@ -42,10 +42,15 @@ static long get_number(Token *tok) {
   return tok->val;
 }
 
-// stmt = expr ";"
+// stmt = "return" expr ";" | expr ";"
 static Node *stmt(Token **rest, Token *tok) {
   // &tok => ポインタ自身のアドレス，tok => 格納されている変数のアドレス
-  Node *node = new_unary(ND_EXPR_STMT, expr(&tok, tok));
+  
+  Node *node;
+  if (equal(tok, "return"))
+    node = new_unary(ND_RETURN, expr(&tok, tok->next)); // returnのnextを見る
+  else
+    node = new_unary(ND_EXPR_STMT, expr(&tok, tok)); // 中身を見る
   *rest = skip(tok, ";");
   return node;
 }

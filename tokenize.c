@@ -64,6 +64,16 @@ bool startwith(char *p, char *q){
   return strncmp(p, q, strlen(q)) == 0;
 }
 
+static bool is_alpha(char c) {
+  return ('a' <= c && c <= 'z') ||
+         ('A' <= c && c <= 'Z') ||
+         (c == '_');
+}
+
+static bool is_alnum(char c) {
+  return is_alpha(c) || ('0' <= c && c <= '9');
+}
+
 // 入力文字列pをトークナイズし，それを返す
 Token *tokenize(char *p) {
   current_input = p;
@@ -88,6 +98,14 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    // keywordの処理
+    // returnかつ7文字目が空白
+    if (startwith(p, "return") && !is_alnum(p[6])){
+      cur = new_token(TK_RESERVED, cur, p, 6);
+      p += 6;
+      continue;
+    }
+    
     // 複数文字の処理
     if (startwith(p, "==") ||
         startwith(p, "!=") ||
