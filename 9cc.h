@@ -1,5 +1,5 @@
 // usage #include "9cc.h" => カレントディレクトリからヘッダファイルを探してくれる
-
+#include <assert.h>
 #include <ctype.h> // typedef
 #include <stdarg.h> // va_*
 #include <stdbool.h>
@@ -28,23 +28,17 @@ typedef enum {
 typedef struct Token Token;
 struct Token {
   TokenKind kind; // トークンの型
-  Token *next; //次の入力トークン
-  int val; // kind = TK_NUM の場合，その数値
-  char *str; // トークン文字列;
+  Token *next; // 次の入力トークン
+  long val; // kind = TK_NUM の場合，その数値
+  char *loc; // トークンの位置
   int len; // トークンの長さ
 };
 
 void error(char *fmt, ...);
-void error_at(char *loc, char *fmt, ...);
-bool consume(char *op);
-void expect(char *op);
-int expect_number(void);
-bool at_eof(void);
-Token *tokenize(void);
-
-// グローバル変数の宣言
-extern char *user_input;
-extern Token *token;
+void error_tok(Token *tok, char *fmt, ...);
+bool equal(Token *tok, char *op);
+Token *skip(Token *tok, char *op);
+Token *tokenize(char *input);
 
 //
 // parse.c
@@ -59,6 +53,7 @@ typedef enum {
               ND_NE, // !=
               ND_LT, // <
               ND_LE, // <=
+              ND_EXPR_STMT, // ?
               ND_NUM, // 整数
 } NodeKind;
 
@@ -66,12 +61,13 @@ typedef enum {
 typedef struct Node Node;
 struct Node {
   NodeKind kind; // ノードの型
+  Node *next; // 次のノード
   Node *lhs; // 左辺
   Node *rhs; // 右辺
-  int val; // kindがND_NUMの場合のみ使う
+  long val; // kindがND_NUMの場合のみ使う
 };
 
-Node *expr();
+Node *parse(Token *tok);
 
 //
 // codegen.c

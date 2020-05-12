@@ -5,9 +5,8 @@ int main(int argc, char **argv){
     error("%s: 引数の個数が正しくありません", argv[0]);
 
   // tokenize and parse
-  user_input = argv[1];
-  token = tokenize();
-  Node *node = expr();
+  Token *tok = tokenize(argv[1]);
+  Node *node = parse(tok);
 
   // 走査
   codegen(node);
