@@ -105,6 +105,11 @@ Token *tokenize(char *p) {
       p += 6;
       continue;
     }
+
+    if ('a' <= *p && *p <= 'z') {
+      cur = new_token(TK_IDENT, cur, p++, 1);
+      continue;
+    }
     
     // 複数文字の処理
     if (startwith(p, "==") ||
