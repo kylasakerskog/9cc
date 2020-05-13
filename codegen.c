@@ -12,11 +12,7 @@ static char *reg(int idx){
 
 static void gen_addr(Node *node){
   if (node->kind == ND_VAR){
-    // ローカル変数のベースポインタからのオフセット
-    int offset = (node->name - 'a' + 1) * 8;
-    offset += 32; // callee-savedレジスタを考慮
-    // offsetのアドレス計算の結果をreg(top++)に挿入
-    printf("  lea %s, [rbp-%d]\n", reg(top++), offset);
+    printf("  lea %s, [rbp-%d]\n", reg(top++), node->var->offset);
     return;
   }
 
@@ -115,7 +111,7 @@ static void gen_stmt(Node *node) {
 }
 
 
-void codegen(Node *node) {
+void codegen(Function *prog) {
   // 最初の3行
   printf(".intel_syntax noprefix \n"); // intel記法の選択
   printf(".global main\n"); // プログラム全体から見える関数の指定
@@ -124,14 +120,14 @@ void codegen(Node *node) {
   // Prologue. r12-15 : callee-saved レジスタ
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
-  printf("  sub rsp, 240\n");
+  printf("  sub rsp, %d\n", prog->stack_size);
   printf("  mov [rbp-8], r12\n");
   printf("  mov [rbp-16], r13\n");
   printf("  mov [rbp-24], r14\n");
   printf("  mov [rbp-32], r15\n");
 
   // 走査
-  for (Node *n = node; n; n = n->next){
+  for (Node *n = prog->node; n; n = n->next){
     gen_stmt(n);
     assert(top == 0);
   }

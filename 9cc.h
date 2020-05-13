@@ -1,4 +1,5 @@
 // usage #include "9cc.h" => カレントディレクトリからヘッダファイルを探してくれる
+#define _POSIX_C_SOURCE 200809L // 謎?
 #include <assert.h>
 #include <ctype.h> // typedef
 #include <stdarg.h> // va_*
@@ -45,6 +46,16 @@ Token *tokenize(char *input);
 // parse.c
 //
 
+typedef struct Var Var;
+
+// ローカル変数の型
+struct Var {
+  Var *next; // 次の変数かNULL
+  char *name; // 変数の名前
+  int offset; // RBPからのオフセット
+};
+
+// AST node
 typedef enum {
               ND_ADD, // +
               ND_SUB, // -
@@ -68,14 +79,23 @@ struct Node {
   Node *next; // 次のノード
   Node *lhs; // 左辺
   Node *rhs; // 右辺
-  char name; // kindがND_VARの場合のみ使う
+  Var *var; // kindがND_VARの場合のみ使う
   long val; // kindがND_NUMの場合のみ使う
 };
 
-Node *parse(Token *tok);
+typedef struct Function Function;
+struct Function{
+  Node *node;
+  Var *locals;
+  int stack_size;
+};
+
+// parseのときの返り値を構造体Functionで返す
+Function *parse(Token *tok);
+
 
 //
 // codegen.c
 //
 
-void codegen(Node *node);
+void codegen(Function *prog);
