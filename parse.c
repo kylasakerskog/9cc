@@ -71,15 +71,28 @@ static long get_number(Token *tok) {
   return tok->val;
 }
 
-// stmt = "return" expr ";" | expr ";"
+// stmt = "return" expr ";" | "if" "(" expr ")" stmt ("else" stmt)? | expr ";"
 static Node *stmt(Token **rest, Token *tok) {
   // &tok => ポインタ自身のアドレス，tok => 格納されている変数のアドレス
   
-  Node *node;
-  if (equal(tok, "return"))
-    node = new_unary(ND_RETURN, expr(&tok, tok->next)); // returnのnextを見る
-  else
-    node = new_unary(ND_EXPR_STMT, expr(&tok, tok)); // 中身を見る
+  if (equal(tok, "return")){
+    Node *node = new_unary(ND_RETURN, expr(&tok, tok->next)); // returnのnextを見る
+    *rest = skip(tok, ";");
+    return node;
+  }
+  if (equal(tok, "if")) {
+    Node *node = new_node(ND_IF);
+    tok = skip(tok->next, "(");
+    node->cond = expr(&tok, tok);
+    tok = skip(tok, ")");
+    node->then = stmt(&tok, tok);
+    if (equal(tok, "else"))
+      node->els = stmt(&tok, tok->next);
+    *rest = tok;
+    return node;
+  }
+  
+  Node *node = new_unary(ND_EXPR_STMT, expr(&tok, tok)); // 中身を見る
   *rest = skip(tok, ";");
   return node;
 }

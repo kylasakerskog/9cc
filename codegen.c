@@ -1,6 +1,7 @@
 #include "9cc.h"
 
 static int top;
+static int labelseq = 1;
 
 // レジスタ関数
 static char *reg(int idx){
@@ -96,6 +97,27 @@ static void gen_expr(Node *node){
 
 static void gen_stmt(Node *node) {
   switch (node->kind) {
+  case ND_IF: {
+    int seq = labelseq++; // if文の出現回数
+    if (node->els){ // if(A) B else C
+      gen_expr(node->cond); // Aをコンパイルしたコード // スタックのトップに結果がある
+      printf("  cmp %s, 0\n", reg(--top));
+      printf("  je .L.else.%d\n", seq);
+      gen_stmt(node->then); // Bをコンパイルしたコード
+      printf("  jmp .L.end.%d\n", seq);
+      printf(".L.else.%d:\n", seq);
+      gen_stmt(node->els); // Cをコンパイルしたコード
+      printf(".L.end.%d:\n", seq);
+    }
+    else { // if (A) B
+      gen_expr(node->cond); // Aをコンパイルしたコード //スタックのトップに結果がある
+      printf("  cmp %s, 0\n", reg(--top));
+      printf("  je .L.end.%d\n", seq);
+      gen_stmt(node->then); // Bをコンパイルしたコード
+      printf(".L.end.%d:\n", seq);
+    }
+    return;
+  }
   case ND_RETURN:
     gen_expr(node->lhs);
     printf("  mov rax, %s\n", reg(--top));
