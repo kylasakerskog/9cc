@@ -68,6 +68,7 @@ typedef enum {
               ND_ASSIGN, // =
               ND_RETURN, // return
               ND_IF, // if文
+              ND_FOR, // for文
               ND_EXPR_STMT, // Statement
               ND_VAR, // 変数
               ND_NUM, // 整数
@@ -82,10 +83,12 @@ struct Node {
   Node *lhs; // 左辺
   Node *rhs; // 右辺
 
-  // kindがND_IFの場合のみ使う
+  // kindがND_IF, ND_FORの場合のみ使う
   Node *cond; // 条件 
   Node *then; // 条件が真のとき
   Node *els; // 条件が偽のとき
+  Node *init; // 初期化
+  Node *inc; // インクリメント
 
   Var *var; // kindがND_VARの場合のみ使う
   long val; // kindがND_NUMの場合のみ使う

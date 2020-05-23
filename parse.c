@@ -71,7 +71,12 @@ static long get_number(Token *tok) {
   return tok->val;
 }
 
-// stmt = "return" expr ";" | "if" "(" expr ")" stmt ("else" stmt)? | expr ";"
+/*
+  stmt = "return" expr ";" 
+  | "if" "(" expr ")" stmt ("else" stmt)? 
+  | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+  | expr ";"
+*/ 
 static Node *stmt(Token **rest, Token *tok) {
   // &tok => ポインタ自身のアドレス，tok => 格納されている変数のアドレス
   
@@ -80,15 +85,35 @@ static Node *stmt(Token **rest, Token *tok) {
     *rest = skip(tok, ";");
     return node;
   }
-  if (equal(tok, "if")) {
-    Node *node = new_node(ND_IF);
+  if (equal(tok, "if")) { // if (A) B else C
+    Node *node = new_node(ND_IF); 
     tok = skip(tok->next, "(");
-    node->cond = expr(&tok, tok);
+    node->cond = expr(&tok, tok); // A
     tok = skip(tok, ")");
-    node->then = stmt(&tok, tok);
+    node->then = stmt(&tok, tok); // B
     if (equal(tok, "else"))
-      node->els = stmt(&tok, tok->next);
+      node->els = stmt(&tok, tok->next); // C
     *rest = tok;
+    return node;
+  }
+
+  if (equal(tok, "for")){ // for (A;B;C) D
+    Node *node = new_node(ND_FOR);
+    tok = skip(tok->next, "("); // A
+    
+    if (!equal(tok, ";"))
+      node->init = new_unary(ND_EXPR_STMT, expr(&tok, tok)); // B
+    tok = skip(tok, ";");
+    
+    if (!equal(tok, ";"))
+      node->cond = expr(&tok, tok); // C
+    tok = skip(tok, ";");
+
+    if (!equal(tok, ")"))
+      node->inc = new_unary(ND_EXPR_STMT, expr(&tok, tok)); // D
+    tok = skip(tok, ")");
+
+    node->then = stmt(rest, tok);
     return node;
   }
   
