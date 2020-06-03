@@ -68,7 +68,7 @@ typedef enum {
               ND_ASSIGN, // =
               ND_RETURN, // return
               ND_IF, // if文
-              ND_FOR, // for文
+              ND_FOR, // for文、while文
               ND_EXPR_STMT, // Statement
               ND_VAR, // 変数
               ND_NUM, // 整数

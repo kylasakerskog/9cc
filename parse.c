@@ -75,6 +75,7 @@ static long get_number(Token *tok) {
   stmt = "return" expr ";" 
   | "if" "(" expr ")" stmt ("else" stmt)? 
   | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+  | "while" "(" expr ")" stmt
   | expr ";"
 */ 
 static Node *stmt(Token **rest, Token *tok) {
@@ -114,6 +115,15 @@ static Node *stmt(Token **rest, Token *tok) {
     tok = skip(tok, ")");
 
     node->then = stmt(rest, tok);
+    return node;
+  }
+
+  if (equal(tok, "while")){ // while (A) B
+    Node *node = new_node(ND_FOR);
+    tok = skip(tok->next, "(");
+    node->cond = expr(&tok, tok); // A
+    tok = skip(tok, ")");
+    node->then = stmt(rest, tok); // B
     return node;
   }
   
