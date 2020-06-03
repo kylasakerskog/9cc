@@ -135,7 +135,11 @@ static void gen_stmt(Node *node) {
     printf(".L.end.%d:\n", seq);
     return;
   }
-  
+  case ND_BLOCK: // stmt =  "{" stmt* "}"
+    for (Node *n = node->body; n; n = n->next){
+      gen_stmt(n);
+    }
+    return;
   case ND_RETURN:
     gen_expr(node->lhs);
     printf("  mov rax, %s\n", reg(--top));
@@ -147,7 +151,7 @@ static void gen_stmt(Node *node) {
     return;
   default:
     error("invalid statement");
-  }
+  }  
 }
 
 

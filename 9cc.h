@@ -69,6 +69,7 @@ typedef enum {
               ND_RETURN, // return
               ND_IF, // if文
               ND_FOR, // for文、while文
+              ND_BLOCK, // { ... }
               ND_EXPR_STMT, // Statement
               ND_VAR, // 変数
               ND_NUM, // 整数
@@ -90,6 +91,8 @@ struct Node {
   Node *init; // 初期化
   Node *inc; // インクリメント
 
+  Node *body; // ブロック
+  
   Var *var; // kindがND_VARの場合のみ使う
   long val; // kindがND_NUMの場合のみ使う
 };
