@@ -1,5 +1,5 @@
 ## mcc
-Make C language compiler (Inspired by [compilerbook](https://www.sigbus.info/compilerbook))
+This is the reference implementation of https://www.sigbus.info/compilerbook.
 
 ## Usage
 ```
